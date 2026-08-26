@@ -26,19 +26,24 @@ that looks completely convincing. That happened here more than once — see belo
 
 ## What the benches found
 
-**Code review** — 8 cases, 16 planted bugs, **4 runs per model**, columns below cover the
-6 cases run on every model:
+**Code review** — **3 clean runs per model** over the 6 cases every model was run on,
+14 planted bugs in those 6:
 
-| model | found of 14 | false positives | $/M in | s/run |
+| model | found of 14 | false positives (3 runs) | $/M in | s/run |
 |---|---|---|---|---|
-| `deepseek-chat` | 13–14 | 5 | 0.40 | 61 |
-| `glm-5.2` | 12–14 | 2 | 0.97 | 155 |
-| `kimi-k2.7-code` | 10–14 | 2 | 0.67 | 161 |
-| `gemini-3.7-flash` | 10–11 | 4 | 0.375 | 97 |
+| `deepseek-chat` | 13–14 | 4 | 0.40 | 56 |
+| `glm-5.2` | 12–14 | 2 | 0.97 | 163 |
+| `kimi-k2.7-code` | 10–14 | 0 | 0.67 | 168 |
+| `gemini-3.7-flash` | 10–11 | 3 | 0.375 | 101 |
 
-The ranges are the point; this is not a leaderboard. The top two overlap and are not
-separated by this bench — they separate on false positives and on cost, not on hit rate.
-`kimi` matches the leaders on its best run and drops to zero on its worst, on the same case.
+The ranges are the point; this is not a leaderboard. The top two overlap on hit rate and
+this bench does not separate them — they separate on false positives and on cost. `kimi`
+is the interesting case: it never once flagged correct code, and it is also the least
+predictable, spanning 10 to 14 across three runs. Cheapest and steadiest is not the same
+model as quietest and least reliable, and a single mean would have hidden both facts.
+
+A fifth model, `qwen3-coder-plus`, was run only once, and that single run is among the
+excluded ones below. It therefore has no clean data here at all and is not listed.
 
 **Search** — 8 questions, 3 tools, **2 runs only**:
 
@@ -70,6 +75,14 @@ planted bugs, phrased in the words of the notes file. Checking every saved trans
 **11 runs out of 44 had read the key.** Fixed by copying a single source file into a
 temporary directory and running there. Anything that knows the answer must live outside
 the model's reach — not "in another file", outside the working directory.
+
+Every run recorded before that fix is excluded from the table above and kept separately in
+[`code-review/results-log-excluded.csv`](code-review/results-log-excluded.csv), so the
+exclusion can be checked rather than taken on trust. It costs one run per model and removes
+the fifth model entirely. For the record, the hit ranges did not move — the contaminated
+runs sat inside the clean ranges, not above them — but false-positive counts did, most
+sharply for `kimi`, which drops from 2 to 0. Publishing a number computed over a run you
+know was contaminated is not a rounding error; it is the thing this bench exists to catch.
 
 **The scorer under-counted, twice, for two different reasons.** A pattern written for the
 phrasing we expected missed the phrasing the model used, scoring a hit as a miss. Separately,

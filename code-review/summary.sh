@@ -7,7 +7,11 @@
 # выбирать модель по этим числам нельзя.
 set -u
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-LOG="${1:-$ROOT/results/log.csv}"
+# results/log.csv пишет run.sh на своей машине; results-log.csv — сведённый
+# журнал, который лежит в репозитории. Брать первый, если он есть, иначе второй.
+if [ $# -gt 0 ]; then LOG="$1"
+elif [ -f "$ROOT/results/log.csv" ]; then LOG="$ROOT/results/log.csv"
+else LOG="$ROOT/results-log.csv"; fi
 [ -f "$LOG" ] || { echo "нет файла $LOG"; exit 1; }
 
 awk -F, '
