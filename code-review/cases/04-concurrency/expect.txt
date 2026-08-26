@@ -1,0 +1,2 @@
+claim_slot|jobs\.py:(9|10|11|12)
+write_pid|path\.exists|jobs\.py:2[0123]

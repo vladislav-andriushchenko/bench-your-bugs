@@ -1,0 +1,2 @@
+issue_stamp|created_at or time|tokens\.py:7
+split_token|split\("\."\)|tokens\.py:12

@@ -1,0 +1,3 @@
+find_user|SQL|инъекц|storage\.py:6
+dump_report|storage\.py:1[01234]
+load_config|except Exception|storage\.py:1[789]|storage\.py:2[01]

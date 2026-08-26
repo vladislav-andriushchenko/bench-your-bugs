@@ -1,0 +1,3 @@
+pick_deadline|explicit_deadline or|pipeline\.py:4[0-3]
+trim_batches|size - 1|pipeline\.py:5[3-6]
+stash_record|handle\.close|pipeline\.py:(6[6-9]|7[01])

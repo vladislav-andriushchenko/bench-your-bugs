@@ -1,0 +1,3 @@
+Based on the search results, the Perplexity Sonar Reasoning Pro model costs $2 per million input tokens and $8 per million output tokens.
+However, I should note that the search results consistently refer to this model as "Sonar Reasoning Pro" (with the "-pro" suffix), not simply "sonar-reasoning" without the suffix. If you're specifically looking for a different model variant without the "-pro" suffix, that may not be widely documented in the current API pricing.
+Источники: docs.perplexity.ai/docs/getting-started/pricing, cloudzero.com/blog/perplexity-api-pricing, burnwise.io/ai-pricing/perplexity
