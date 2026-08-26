@@ -17,7 +17,11 @@ while IFS=$'\t' read -r qid cls question expect forbid; do
     base=$(basename "$f" .md)
     tool=${base%%-r*}
     run=${base#*-r}; run=${run%%-*}
-    sz=$(wc -c < "$f" | tr -d ' ')
+    # Считать без CR: файлы, записанные на Windows, иначе дают на байт больше
+    # на каждой строке, и одна и та же выдача меряется по-разному на разных
+    # системах. Столбец нужен, чтобы отличать обрубок от ответа, а не чтобы
+    # мерить переводы строк.
+    sz=$(tr -d '\r' < "$f" | wc -c | tr -d ' ')
     if [ "$sz" -lt 40 ]; then
       printf '%s,%s,%s,%s,сорвано,-,%s\n' "$tool" "$run" "$qid" "$cls" "$sz"; continue
     fi
