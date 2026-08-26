@@ -128,6 +128,34 @@ that calls everything a bug scores full marks on the first column and fails here
 model on one case turned out larger than the gap between different models, so a single pass
 is a coin flip formatted as a table.
 
+### Keeping a corpus from turning into a heap
+
+A hundred folders named after commit hashes are unreadable within a month. The fix is not
+better folder names — it is that **a corpus you cannot query is just a heap**. And there is
+only one question worth asking it: *where are we blind?*
+
+So every case carries a row in `mycases/manifest.tsv`:
+
+```
+case  commit  area  class  status  last_run
+```
+
+**`class` is the field that does the work**, and the list of classes is deliberately closed
+and short — silent fallback, empty-value boundary, operation ordering, contract mismatch,
+resource leak, wrong condition. Once there are twenty classes the field stops answering
+anything. It is also the one field that is never filled in automatically: assigning a class
+takes judgement, and a guessed class is worse than a missing one, so `from-commit` writes
+`?` and says so.
+
+With it, `bench.sh list` answers the questions that matter: which classes dominate, which
+class the reviewer never catches, and which area has collected so many cases that the
+problem is the code rather than the tests. Five active cases in one area prints a warning
+for exactly that reason.
+
+**Retirement is archiving, not deletion.** `bench.sh archive <case> [reason]` marks the row
+and drops it from runs while leaving the files in place — the same rule as the excluded runs
+in the code-review journal. What you threw out has to remain something you can show.
+
 **Using a different tool is one function.** `run_model` in `code-review/run.sh` receives the
 prompt and prints the answer to stdout; replace its body and everything downstream keeps
 working. It calls `claude -p` by default, on your existing subscription. `RUNNER=opencode`
