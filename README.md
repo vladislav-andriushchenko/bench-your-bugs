@@ -2,11 +2,35 @@
 
 [![selftests](https://github.com/vladislav-andriushchenko/llm-eval-benches/actions/workflows/selftests.yml/badge.svg)](https://github.com/vladislav-andriushchenko/llm-eval-benches/actions/workflows/selftests.yml)
 
-Two small benchmarks that answer "which tool is actually better" by running it,
-not by arguing about it. One measures how well LLMs find planted bugs during code
-review. The other measures how well search tools answer factual questions.
+**A way to check whether an AI step in your workflow actually does what you think it does.**
 
-Both are built the same way, and the method is the point of this repository.
+You told an agent to review your code, or wrote a skill, or added an instruction to your
+prompt. Does it catch what you believe it catches? Did last week's tweak make it better or
+worse? Almost nobody knows, because almost nobody measures — the answer looks plausible, so
+it gets believed.
+
+This repository is a small, working example of measuring that, plus the method behind it.
+It needs no API key, no second provider, and no orchestration. A Claude Code subscription
+and `bash` are enough.
+
+The two benches here are the examples, not the product: one measures how well models find
+planted bugs during code review, the other how well search tools answer factual questions.
+The method is what transfers.
+
+## See it work in five seconds
+
+The search bench has every raw tool answer committed, so scoring re-runs with nothing
+installed beyond `bash` and `grep`:
+
+```bash
+git clone https://github.com/vladislav-andriushchenko/llm-eval-benches
+cd llm-eval-benches/search
+./selftest.sh      # the scorer, checked against fake answers with known verdicts
+./score.sh         # rescores the committed answers and reproduces the published table
+```
+
+No keys, no network, no model calls. If those two commands pass, the whole method just
+demonstrated itself on your machine.
 
 ## The method, in three rules
 
@@ -31,7 +55,80 @@ answers still reproduces the committed results byte for byte. If the scorer chan
 published numbers stop falling out of the published data, the build fails. A benchmark whose
 own numbers cannot be regenerated is a claim, not a measurement.
 
+## Use it on your own thing
+
+The interesting question usually is not "which model is better". It is "does my setup still
+do what I think it does" — your skill, your prompt, your instruction file, this week's
+version of the tool against last week's. Same machinery, and one tool is enough.
+
+**1. Write one case.** A small file with a defect you deliberately put there, plus
+`expect.txt`: one line per defect, a regular expression listing every way a model might name
+it — function name, the giveaway line of code, a line-number range, separated by `|`.
+
+```
+pick_deadline|explicit_deadline or|pipeline\.py:4[0-3]
+```
+
+Two requirements for a planted defect. It must be **indisputable**: you can state the inputs
+that produce the wrong result. And it must be **identifiable**: it lives in a function whose
+name appears nowhere else in the file.
+
+**2. Add `forbid.txt`** with patterns matching code that is deliberately correct. This is the
+false-positive counter, and it matters more than the hit counter. A model that calls
+everything a bug scores full marks on the first column and fails here.
+
+**3. Run it.**
+
+```bash
+./run.sh sonnet 01-tokens      # one case
+./run.sh sonnet               # all of them
+```
+
+`run.sh` calls `claude -p` by default: non-interactive Claude Code, running on your existing
+subscription. No API key. Set `RUNNER=opencode` only if you want to compare models across
+providers.
+
+**Swapping in your own tool is one function.** `run_model` in `run.sh` receives the prompt
+and prints the model's answer to stdout — replace its body with your own call and everything
+downstream keeps working. Note the detail there: the `opencode` branch strips two banner
+lines, and doing that to a tool without a banner would silently eat the first finding.
+
+**4. Run it at least three times.** Not optional, and the reason is in the numbers below.
+
+## What it costs to run
+
+| | Needed |
+|---|---|
+| Rescore the committed search answers | `bash`, `grep`. Nothing else |
+| Run the code-review bench on your own cases | the above, plus Claude Code on a subscription |
+| Compare models across providers | the above, plus `opencode` and that provider's key |
+
+Only the third row needs an API key, and it is the narrowest use. The first two are the point.
+
+## Where this method stops working
+
+Being honest about this is part of the method, so it goes above the results rather than below.
+
+**`grep` needs a textual signature.** "Did the model name this specific defect" has one: a
+function name, a line of code, a line number. "Is this summary any good" does not, and no
+regular expression will help. There an LLM judge is the reasonable tool — just be clear that
+you are then measuring two models' agreement, not correctness.
+
+**Patterns are written by hand,** and every new phrasing needs another one. Eight cases is an
+evening. Eight hundred would not be.
+
+**The false-positive counter matches mentions, not claims.** A model that writes "`clamp_ttl`
+has no upper bound, but that is not a bug here" is scored as a false positive, because the
+pattern only sees the name. Verbose models that discuss and dismiss are penalised against
+terse ones that stay silent. The false-positive numbers below should be read with that in
+mind; separating the two would need a human pass over the raw answers.
+
 ## What the benches found
+
+This is what the bench was originally built to answer: which model to make the default for
+code review. It is the narrowest of the three uses above, and it is here as a worked example
+rather than as a leaderboard — the numbers are a snapshot of August 2026 and model versions
+move underneath them. The part worth copying is the shape of the answer, not the values.
 
 **Code review** — **3 clean runs per model** over the 6 cases every model was run on,
 14 planted bugs in those 6:
@@ -129,6 +226,10 @@ code-review/   planted-bug bench: cases/, run.sh, score.sh, selftest.sh, summary
 search/        search bench: ORACLE.md, questions.tsv, score.sh, selftest.sh, answers/
 ```
 
+Three files carry everything worth copying: `score.sh` (the scorer, ~35 and ~66 lines),
+`selftest.sh` (the scorer's own tests, longer than the scorer in both benches), and one
+case folder as a template.
+
 Each directory has its own README with the full method, the failure log, and instructions
 for adding a case. Those are currently in Russian; an English translation is planned.
 
@@ -142,6 +243,12 @@ scoring disputed line by line. For the code-review bench, only the scored journa
 
 Numbers were measured in August 2026. Model versions move; read this as a snapshot of a
 method, not a current leaderboard.
+
+**Two case folders have no runs.** `cases/06-split-a` and `cases/06-split-b` are the halves
+of a long file, prepared to test whether splitting a long source into chunks changes what a
+model finds. That experiment has not been run cleanly yet, so neither journal contains a
+single row for them. They are left in place because the cases themselves are usable; the
+claim they were meant to support is not made anywhere here.
 
 The bench cases are small synthetic programs written from scratch for this repository —
 generic token, order, storage, job-queue and pipeline code, with bugs planted deliberately.

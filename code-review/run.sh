@@ -5,8 +5,39 @@
 #                run.sh deepseek/deepseek-chat 01-tokens 05-volume
 set -u
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-MODEL="${1:?укажи модель, например deepseek/deepseek-chat}"
+MODEL="${1:?укажи модель, например sonnet}"
 shift
+
+# Чем гонять модель. По умолчанию Claude Code в неинтерактивном режиме: он
+# ходит по подписке, API-ключи и второй провайдер не нужны. RUNNER=opencode
+# нужен только для сравнения моделей разных провайдеров.
+#
+# Это единственное место, которое привязывает стенд к конкретному инструменту.
+# Свой вызов подставляется здесь: команда получает промпт первым аргументом и
+# печатает ответ модели в stdout.
+RUNNER=${RUNNER:-claude}
+# Проверять здесь, а не внутри run_model: там вызов идёт в подоболочке, и
+# выход из неё не останавливает прогон. Неизвестный RUNNER молча писал бы
+# сообщение об ошибке в файл ответа, и счётчик записал бы это как «0 из N».
+case "$RUNNER" in
+  claude|opencode) ;;
+  *) echo "неизвестный RUNNER=$RUNNER, поддерживаются claude и opencode" >&2; exit 1 ;;
+esac
+command -v "$RUNNER" >/dev/null || { echo "$RUNNER не найден в PATH" >&2; exit 1; }
+
+run_model() {
+  case "$RUNNER" in
+    claude)
+      # < /dev/null обязателен: без него claude ждёт stdin и тратит на это время
+      timeout 600 claude -p --model "$MODEL" "$1" < /dev/null
+      ;;
+    opencode)
+      # tail -n +3 срезает баннер opencode. Для других инструментов баннера
+      # нет, и срезать нельзя: срежется первая находка.
+      timeout 600 opencode run --model "$MODEL" "$1" 2>&1 | tail -n +3
+      ;;
+  esac
+}
 
 if [ $# -gt 0 ]; then
   CASES=("$@")
@@ -51,7 +82,7 @@ for C in "${CASES[@]}"; do
   cp "$SRC" "$WORK/"
 
   T0=$(date +%s)
-  ( cd "$WORK" && timeout 600 opencode run --model "$MODEL" "Проверь $N. $TASK" ) 2>&1 | tail -n +3 > "$OUT/$C.txt"
+  ( cd "$WORK" && run_model "Проверь $N. $TASK" ) > "$OUT/$C.txt" 2>&1
   rm -rf "$WORK"
   T=$(( $(date +%s) - T0 ))
 
