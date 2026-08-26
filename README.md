@@ -45,7 +45,17 @@ model as quietest and least reliable, and a single mean would have hidden both f
 A fifth model, `qwen3-coder-plus`, was run only once, and that single run is among the
 excluded ones below. It therefore has no clean data here at all and is not listed.
 
-**Search** — 8 questions, 3 tools, **2 runs only**:
+**Search** — 8 questions, 3 tools, **2 runs only**. The three tools, since one of them is
+not widely known:
+
+- **built-in WebSearch** — the web search tool that ships inside Claude Code, used as-is.
+- **Perplexity `sonar-pro`** — the hosted Perplexity API, called directly.
+- **[Vane](https://github.com/ItzCrazyKns/Vane) `balanced_search`** — an open-source,
+  self-hosted answer engine (formerly Perplexica). It queries a private SearxNG metasearch
+  instance and has an LLM write the answer with citations. In this setup it ran locally in
+  Docker with DeepSeek as the writing model, which is where its per-query cost comes from.
+  It is included precisely because it is the option a person builds themselves, and the
+  interesting question was whether that is worth the trouble.
 
 | tool | hits of 16 | fabrications | $/query | s |
 |---|---|---|---|---|
