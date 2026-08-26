@@ -1,0 +1,49 @@
+name: selftests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  scorers:
+    runs-on: ubuntu-latest
+    env:
+      # Cyrillic in grep breaks twice without a UTF-8 locale: \w stops treating
+      # Russian letters as word characters, and . counts bytes instead of
+      # characters. Both failures under-count silently.
+      LC_ALL: C.UTF-8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: code-review scorer selftest
+        run: cd code-review && ./selftest.sh
+
+      - name: search scorer selftest
+        run: cd search && ./selftest.sh
+
+      # The point of this repository is that published numbers come out of
+      # published data. If scoring the committed answers stops reproducing the
+      # committed results, either the scorer changed or the answers did, and
+      # the tables in the README are no longer backed by anything.
+      - name: published search results still reproduce from committed answers
+        run: |
+          cd search
+          ./score.sh > /tmp/fresh.csv
+          if ! diff -u results/log.csv /tmp/fresh.csv; then
+            echo "::error::scoring the committed answers no longer reproduces results/log.csv"
+            exit 1
+          fi
+          echo "results/log.csv reproduced exactly"
+
+      - name: summary runs on the committed journal
+        run: cd code-review && ./summary.sh
+
+      - name: no contaminated runs leaked back into the clean journal
+        run: |
+          if grep -q '^2026-08-23' code-review/results-log.csv; then
+            echo "::error::pre-fix runs are back in results-log.csv; they belong in results-log-excluded.csv"
+            exit 1
+          fi
+          echo "clean journal contains no pre-fix runs"

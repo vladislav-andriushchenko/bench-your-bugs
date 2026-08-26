@@ -1,5 +1,7 @@
 # LLM eval benches
 
+[![selftests](https://github.com/vladislav-andriushchenko/llm-eval-benches/actions/workflows/selftests.yml/badge.svg)](https://github.com/vladislav-andriushchenko/llm-eval-benches/actions/workflows/selftests.yml)
+
 Two small benchmarks that answer "which tool is actually better" by running it,
 not by arguing about it. One measures how well LLMs find planted bugs during code
 review. The other measures how well search tools answer factual questions.
@@ -23,6 +25,11 @@ appears in the text or it does not.
 `./selftest.sh` in both benches runs the scorer against hand-written fake answers with
 known verdicts. It exists because a scorer that silently under-counts produces a result
 that looks completely convincing. That happened here more than once — see below.
+
+Both selftests run in CI on every push, along with a check that scoring the committed
+answers still reproduces the committed results byte for byte. If the scorer changes and the
+published numbers stop falling out of the published data, the build fails. A benchmark whose
+own numbers cannot be regenerated is a claim, not a measurement.
 
 ## What the benches found
 
