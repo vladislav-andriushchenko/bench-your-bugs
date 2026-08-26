@@ -1,21 +1,38 @@
-# LLM eval benches
+# Your own bug benchmark
 
 [![selftests](https://github.com/vladislav-andriushchenko/llm-eval-benches/actions/workflows/selftests.yml/badge.svg)](https://github.com/vladislav-andriushchenko/llm-eval-benches/actions/workflows/selftests.yml)
 
-**A way to check whether an AI step in your workflow actually does what you think it does.**
+**Build a private benchmark out of the bugs you have already fixed, and find out whether AI
+review actually catches them.** It runs on your machine, on your code, against your own
+answer key. A Claude Code subscription and `bash` are all it needs — no API key, no second
+provider, no orchestration.
 
-You told an agent to review your code, or wrote a skill, or added an instruction to your
-prompt. Does it catch what you believe it catches? Did last week's tweak make it better or
-worse? Almost nobody knows, because almost nobody measures — the answer looks plausible, so
-it gets believed.
+```bash
+./bench.sh from-commit a1b2c3d --repo ~/my-project   # a bug you fixed becomes a test case
+./bench.sh run                                        # three passes, one table
+```
 
-This repository is a small, working example of measuring that, plus the method behind it.
-It needs no API key, no second provider, and no orchestration. A Claude Code subscription
-and `bash` are enough.
+The first command checks out the file as it was *before* your fix, keeps the fix itself
+where the model cannot see it, and turns the diff into the expected answer. Twenty seconds
+per bug. Fix ten bugs over a month and you own a benchmark nobody else has.
 
-The two benches here are the examples, not the product: one measures how well models find
-planted bugs during code review, the other how well search tools answer factual questions.
-The method is what transfers.
+## Why a private benchmark beats a public score
+
+Public leaderboards answer a question you do not have. This one answers three you do.
+
+**Your bugs are not in anyone's training data.** Public benchmarks leak into training sets
+and stop measuring anything. Yesterday's commit in your repository cannot.
+
+**Your bug classes are not the average bug class.** If your pain is idempotency, or timezone
+arithmetic, or one API contract that everyone gets wrong, no general benchmark will tell you
+whether a model catches *that*.
+
+**It answers "better or worse than last week".** You edit an instruction file, rewrite a
+skill, or a new model version ships. Rerun the same cases. Today that question gets answered
+by feel; this turns it into a number.
+
+The two benches in this repository are worked examples of the same method, not the product:
+one on planted bugs in code review, one on search tools. The machinery is what transfers.
 
 ## See it work in five seconds
 
@@ -31,6 +48,20 @@ cd llm-eval-benches/search
 
 No keys, no network, no model calls. If those two commands pass, the whole method just
 demonstrated itself on your machine.
+
+## The one thing that cannot be automated
+
+The answer key. A model that plants a bug and then writes its own expected answer is
+measuring itself, and it will hand you a clean green number that means nothing.
+
+So the answer key is not invented, it is harvested. A commit that fixed a bug is ground
+truth verified by reality: it knows what was wrong and where. `from-commit` reads it and
+builds the case. What stays manual is picking a commit that genuinely fixed a bug, and
+glancing at the generated pattern. Seconds, not hours — but not zero, and it cannot be zero.
+
+One bias to keep in mind: only bugs that were **found and fixed** can enter the corpus. The
+ones that shipped and were never noticed are exactly the ones you would most want to catch,
+and they are not here.
 
 ## The method, in three rules
 
@@ -55,15 +86,32 @@ answers still reproduces the committed results byte for byte. If the scorer chan
 published numbers stop falling out of the published data, the build fails. A benchmark whose
 own numbers cannot be regenerated is a claim, not a measurement.
 
-## Use it on your own thing
+## Building your corpus
 
-The interesting question usually is not "which model is better". It is "does my setup still
-do what I think it does" — your skill, your prompt, your instruction file, this week's
-version of the tool against last week's. Same machinery, and one tool is enough.
+**The normal path is `from-commit`.** Every time you fix a bug, spend twenty seconds turning
+it into a case:
 
-**1. Write one case.** A small file with a defect you deliberately put there, plus
-`expect.txt`: one line per defect, a regular expression listing every way a model might name
-it — function name, the giveaway line of code, a line-number range, separated by `|`.
+```bash
+./bench.sh from-commit a1b2c3d --repo ~/my-project
+./bench.sh list                    # what you have so far
+./bench.sh run                     # three passes over all of it
+```
+
+Cases land in `mycases/`, which is git-ignored: your code stays yours. `from-commit` prints
+the generated `expect.txt` and asks you to look at it, because the draft is derived from diff
+hunks and the hunk header is not always the function name. When a fix was tangled with
+refactoring, narrow the case by hand.
+
+**Writing a case by hand** is the fallback when there is no commit to harvest — a bug you
+know about but never fixed, or a defect class you want to probe deliberately. A case is a
+directory with three files:
+
+```
+mycases/my-case/
+  source.py      the code, containing the defect
+  expect.txt     one line per defect: a regex naming every way a model might describe it
+  forbid.txt     patterns matching code that is deliberately correct (optional)
+```
 
 ```
 pick_deadline|explicit_deadline or|pipeline\.py:4[0-3]
@@ -73,27 +121,19 @@ Two requirements for a planted defect. It must be **indisputable**: you can stat
 that produce the wrong result. And it must be **identifiable**: it lives in a function whose
 name appears nowhere else in the file.
 
-**2. Add `forbid.txt`** with patterns matching code that is deliberately correct. This is the
-false-positive counter, and it matters more than the hit counter. A model that calls
-everything a bug scores full marks on the first column and fails here.
+`forbid.txt` is the false-positive counter, and it matters more than the hit counter. A model
+that calls everything a bug scores full marks on the first column and fails here.
 
-**3. Run it.**
+**Three passes, not one.** `bench.sh run` does this by default. Run-to-run spread for one
+model on one case turned out larger than the gap between different models, so a single pass
+is a coin flip formatted as a table.
 
-```bash
-./run.sh sonnet 01-tokens      # one case
-./run.sh sonnet               # all of them
-```
-
-`run.sh` calls `claude -p` by default: non-interactive Claude Code, running on your existing
-subscription. No API key. Set `RUNNER=opencode` only if you want to compare models across
-providers.
-
-**Swapping in your own tool is one function.** `run_model` in `run.sh` receives the prompt
-and prints the model's answer to stdout — replace its body with your own call and everything
-downstream keeps working. Note the detail there: the `opencode` branch strips two banner
-lines, and doing that to a tool without a banner would silently eat the first finding.
-
-**4. Run it at least three times.** Not optional, and the reason is in the numbers below.
+**Using a different tool is one function.** `run_model` in `code-review/run.sh` receives the
+prompt and prints the answer to stdout; replace its body and everything downstream keeps
+working. It calls `claude -p` by default, on your existing subscription. `RUNNER=opencode`
+exists only for comparing models across providers. Note the detail in there: the `opencode`
+branch strips two banner lines, and doing that to a tool without a banner would silently eat
+the first finding.
 
 ## What it costs to run
 
