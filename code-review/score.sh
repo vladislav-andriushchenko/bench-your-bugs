@@ -12,7 +12,15 @@ ANSWER="${2:?файл с ответом модели}"
 
 # Сорванный прогон отличать от нулевого результата: иначе отказ провайдера
 # выглядит в таблице как плохая модель.
-if grep -qE 'Internal Server Error|"code":5[0-9][0-9]|rate.?limit|Request timed out|terminated by signal|Connection reset|send disconnect|^Error:' "$ANSWER"; then
+# Отличать отказ провайдера от цитаты этих же слов в разборе чужого кода.
+# Признак без порога по длине: сообщение об отказе составляет ВЕСЬ вывод,
+# поэтому если выбросить строки с маркерами и ничего не осталось, считать
+# нечего. Цитата же лежит внутри разбора, и после неё остаётся весь остальной
+# ответ. Поймано на живом прогоне 26.08.2026: разбор score.sh пометился
+# сорванным, потому что модель верно процитировала его собственные маркеры.
+FAIL_MARKERS='Internal Server Error|"code":5[0-9][0-9]|rate.?limit|Request timed out|terminated by signal|Connection reset|send disconnect|^Error:'
+if grep -qE "$FAIL_MARKERS" "$ANSWER" \
+   && [ -z "$(grep -vE "$FAIL_MARKERS" "$ANSWER" | tr -d '[:space:]')" ]; then
   echo "- - -"
   exit 2
 fi

@@ -5,6 +5,8 @@
 #                run.sh deepseek/deepseek-chat 01-tokens 05-volume
 set -u
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+# Каталог случаев можно подменить: bench.sh держит свои в mycases/.
+CASES_ROOT="${CASES_DIR:-$ROOT/cases}"
 MODEL="${1:?укажи модель, например sonnet}"
 shift
 
@@ -42,7 +44,7 @@ run_model() {
 if [ $# -gt 0 ]; then
   CASES=("$@")
 else
-  mapfile -t CASES < <(ls -1 "$ROOT/cases")
+  mapfile -t CASES < <(ls -1 "$CASES_ROOT")
 fi
 
 STAMP=$(date +%Y-%m-%d_%H%M%S)
@@ -67,12 +69,19 @@ echo "модель: $MODEL"
 echo
 printf '%-14s %11s %8s %8s\n' случай найдено ложных секунд
 for C in "${CASES[@]}"; do
-  DIR="$ROOT/cases/$C"
+  DIR="$CASES_ROOT/$C"
   if [ ! -d "$DIR" ]; then
     echo "нет случая $C"
     continue
   fi
-  SRC=$(ls "$DIR"/*.py | head -1)
+  # Исходник — единственный файл случая, который не служебный. Не фильтровать
+  # по .py: случаи из чужих репозиториев приходят на любом языке.
+  SRC=$(find "$DIR" -maxdepth 1 -type f \
+        ! -name 'expect.txt' ! -name 'forbid.txt' ! -name 'notes.md' | sort | head -1)
+  if [ -z "$SRC" ]; then
+    echo "в случае $C нет файла с исходником"
+    continue
+  fi
   N=$(basename "$SRC")
 
   # Модель запускать в пустом каталоге с одним файлом: в каталоге случая

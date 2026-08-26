@@ -4,3 +4,4 @@ Thumbs.db
 
 # Прогоны пишутся сюда локально и в репозиторий не попадают.
 code-review/results/
+mycases/
