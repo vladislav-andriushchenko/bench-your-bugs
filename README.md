@@ -1,6 +1,6 @@
 # Your own bug benchmark
 
-[![selftests](https://github.com/vladislav-andriushchenko/llm-eval-benches/actions/workflows/selftests.yml/badge.svg)](https://github.com/vladislav-andriushchenko/llm-eval-benches/actions/workflows/selftests.yml)
+[![selftests](https://github.com/vladislav-andriushchenko/bench-your-bugs/actions/workflows/selftests.yml/badge.svg)](https://github.com/vladislav-andriushchenko/bench-your-bugs/actions/workflows/selftests.yml)
 
 **Build a private benchmark out of the bugs you have already fixed, and find out whether AI
 review actually catches them.** It runs on your machine, on your code, against your own
@@ -40,8 +40,8 @@ The search bench has every raw tool answer committed, so scoring re-runs with no
 installed beyond `bash` and `grep`:
 
 ```bash
-git clone https://github.com/vladislav-andriushchenko/llm-eval-benches
-cd llm-eval-benches/search
+git clone https://github.com/vladislav-andriushchenko/bench-your-bugs
+cd bench-your-bugs/search
 ./selftest.sh      # the scorer, checked against fake answers with known verdicts
 ./score.sh         # rescores the committed answers and reproduces the published table
 ```
