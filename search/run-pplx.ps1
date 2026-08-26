@@ -12,8 +12,13 @@ foreach ($run in 1..2) {
       "ERROR: $_" | Out-File -FilePath $out -Encoding utf8
       $line = "error"
     }
+    # Отказ без исключения кодом выхода не ловится try/catch: без этой строки
+    # диагностика провайдера попадёт в таблицу как ответ модели.
+    if ($LASTEXITCODE -ne 0) { $line = "FAILED exit=$LASTEXITCODE $line" }
     $t0.Stop()
-    "$qid`t$run`t$([int]$t0.Elapsed.TotalSeconds)`t$($line.Trim())" |
+    # Схлопнуть переносы строк: многострочный вывод ломает формат TSV.
+    $note = ($line -replace '\s+', ' ').Trim()
+    "$qid`t$run`t$([int]$t0.Elapsed.TotalSeconds)`t$note" |
       Out-File -FilePath "$base\answers\pplx-timing.tsv" -Encoding utf8 -Append
   }
 }

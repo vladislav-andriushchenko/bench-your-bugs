@@ -26,7 +26,8 @@ that looks completely convincing. That happened here more than once — see belo
 
 ## What the benches found
 
-**Code review** — 8 cases, 16 planted bugs, four clean runs per model:
+**Code review** — 8 cases, 16 planted bugs, **4 runs per model**, columns below cover the
+6 cases run on every model:
 
 | model | found of 14 | false positives | $/M in | s/run |
 |---|---|---|---|---|
@@ -35,11 +36,11 @@ that looks completely convincing. That happened here more than once — see belo
 | `kimi-k2.7-code` | 10–14 | 2 | 0.67 | 161 |
 | `gemini-3.7-flash` | 10–11 | 4 | 0.375 | 97 |
 
-Read the spread, not the mean. The top two are indistinguishable on hit rate; they
-separate on false positives and on cost. `kimi` matches the leaders on its best run and
-collapses to zero on its worst, on the same case.
+The ranges are the point; this is not a leaderboard. The top two overlap and are not
+separated by this bench — they separate on false positives and on cost, not on hit rate.
+`kimi` matches the leaders on its best run and drops to zero on its worst, on the same case.
 
-**Search** — 8 questions, 2 runs, 3 tools, 48 answers:
+**Search** — 8 questions, 3 tools, **2 runs only**:
 
 | tool | hits of 16 | fabrications | $/query | s |
 |---|---|---|---|---|
@@ -47,11 +48,15 @@ collapses to zero on its worst, on the same case.
 | Perplexity `sonar-pro` | 12 | 2 | 0.0084 | 2–6 |
 | Vane `balanced_search` | 9 | 2 | 0.004 | 30–60 |
 
-13 against 12 is noise; eight questions cannot separate those two. What the bench does
-separate is fabrication. One question asks the price of a model that no longer exists.
-The correct answer is to say so. Two of the three tools invented a price, and one of
-them attributed the invented price to a vendor page while actually citing an aggregator.
-A wrong fact is visible. A fabricated citation is not.
+**Treat these three numbers as indicative, not settled**, and by this repository's own rule:
+two runs are below the three-run minimum stated further down, and the two runs disagreed
+with each other on four of the eight questions. 13 against 12 is certainly noise. The gap
+down to 9 is larger than the disagreement we observed, but two runs cannot establish it.
+
+What the bench does separate, and what does not need many runs, is fabrication. One question
+asks the price of a model that no longer exists; the correct answer is to say so. Two of the
+three tools invented a price, and one of them attributed the invented price to a vendor page
+while actually citing an aggregator. A wrong fact is visible. A fabricated citation is not.
 
 ## Three findings that cost real reruns
 
@@ -76,6 +81,17 @@ failures under-count, and both look plausible. Hence rule 3.
 out larger than the gap between different models. Four of eight search questions disagreed
 between two runs of the same tool. Any conclusion here rests on at least three runs.
 
+**A dead run scored as a bad model.** Found while preparing this repository for publication,
+which is why it is here rather than quietly fixed. `run.sh` strips the first two lines of the
+runner's output to drop its banner. When the process dies before printing a third line — a
+reset connection, a killed session — the error message is stripped along with the banner and
+the answer file ends up empty. The scorer found no failure marker in an empty file and
+returned "0 found", so a transport failure entered the journal as a model that found nothing.
+The selftest made it worse: it asserted that an empty answer scores zero, encoding the bug as
+intended behaviour. Empty answers are now classified as a failed run, and the selftest asserts
+that instead. A scorer that reports a plausible number for work that never happened is worse
+than one that crashes.
+
 ## Layout
 
 ```
@@ -88,9 +104,15 @@ for adding a case. Those are currently in Russian; an English translation is pla
 
 ## Notes
 
-Raw tool outputs are committed on purpose, so the scoring can be re-run and disputed.
-Numbers were measured in August 2026 — model versions move, so treat them as a snapshot
-of the method rather than a current leaderboard.
+**What is and is not reproducible from this repository.** For the search bench, every raw
+tool answer is committed under `search/answers/`, so `./score.sh` can be re-run and the
+scoring disputed line by line. For the code-review bench, only the scored journal
+(`code-review/results-log.csv`) is here — the raw model transcripts are not, which means
+`rescore.sh` has nothing to recompute from until you produce your own runs.
 
-Nothing here comes from any employer's codebase. The cases are small synthetic programs
-written for this bench.
+Numbers were measured in August 2026. Model versions move; read this as a snapshot of a
+method, not a current leaderboard.
+
+The bench cases are small synthetic programs written from scratch for this repository —
+generic token, order, storage, job-queue and pipeline code, with bugs planted deliberately.
+
