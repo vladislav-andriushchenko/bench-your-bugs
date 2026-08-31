@@ -198,23 +198,34 @@ code review. It is the narrowest of the three uses above, and it is here as a wo
 rather than as a leaderboard — the numbers are a snapshot of August 2026 and model versions
 move underneath them. The part worth copying is the shape of the answer, not the values.
 
-**Code review** — **3 clean runs per model** over the 6 cases every model was run on,
-14 planted bugs in those 6:
+**Code review** — clean runs over the 6 cases every model was run on, 14 planted bugs in
+those 6. Snapshot of 2026-08-30, rescored with the current counter:
 
-| model | found of 14 | false positives (3 runs) | $/M in | s/run |
-|---|---|---|---|---|
-| `deepseek-chat` | 13–14 | 4 | 0.40 | 56 |
-| `glm-5.2` | 12–14 | 2 | 0.97 | 163 |
-| `kimi-k2.7-code` | 10–14 | 0 | 0.67 | 168 |
-| `gemini-3.7-flash` | 10–11 | 3 | 0.375 | 101 |
+| model | found of 14 | runs | false positives | $/M in | s/run |
+|---|---|---|---|---|---|
+| `deepseek-chat` | 13–14 | 3 | 3 | 0.40 | 56 |
+| `glm-5.3-flash` | 11–14 | 4 | 0 | 0.075 | 343 |
+| `glm-5.2` | 12–14 | 3 | 2 | 1.19 | 163 |
+| `deepseek-v4-pro` | 11–13 | 4 | 2 | 0.66 | 213 |
+| `kimi-k2.7-code` | 10–14 | 3 | 0 | 0.67 | 168 |
+| `gemini-3.7-flash` | 10–11 | 3 | 3 | 0.375 | 101 |
 
-The ranges are the point; this is not a leaderboard. The top two overlap on hit rate and
-this bench does not separate them — they separate on false positives and on cost. `kimi`
-is the interesting case: it never once flagged correct code, and it is also the least
-predictable, spanning 10 to 14 across three runs. Cheapest and steadiest is not the same
-model as quietest and least reliable, and a single mean would have hidden both facts.
+The ranges are the point; this is not a leaderboard. Four models overlap at the top and
+this bench does not separate them on hit rate — they separate on floor, on false positives,
+on speed and on cost. Three facts a single mean would have hidden:
 
-A fifth model, `qwen3-coder-plus`, was run only once, and that single run is among the
+- **The expensive sibling lost.** `deepseek-v4-pro` costs more, runs four times slower than
+  `deepseek-chat` and scored below it in every run, ceiling and floor alike.
+- **Quietest is not steadiest.** `kimi-k2.7-code` never once flagged correct code, and it is
+  also the least predictable, spanning 10 to 14 across three runs.
+- **Cheapest is not fastest.** `glm-5.3-flash` costs a fifteenth of `glm-5.2` and matches its
+  ceiling, but takes twice as long per run.
+
+The false-positive column moved after the counter fix of 2026-08-30 (see
+`code-review/README.md`): one `deepseek-chat` run had been charged with an accusation it
+never made. Numbers published before that date are not comparable with these.
+
+A seventh model, `qwen3-coder-plus`, was run only once, and that single run is among the
 excluded ones below. It therefore has no clean data here at all and is not listed.
 
 **Search** — 8 questions, 3 tools, **2 runs only**. The three tools, since one of them is
